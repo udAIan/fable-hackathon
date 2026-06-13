@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Check, Loader2, Square, X } from "lucide-react";
+import { ArrowUp, Check, Loader2, Paperclip, Square, X } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { StudioChatMessage } from "server";
@@ -11,6 +11,8 @@ import {
   useListMessages,
   useSendChatMessage,
 } from "../api/chat";
+import { useWorkspaceStore } from "../store/workspace";
+import { useUploadInputs } from "../api/upload";
 
 type ChatStep = {
   id: string;
@@ -28,14 +30,18 @@ type StreamingTurn = {
 
 export const ChatPanel = ({ projectId }: { projectId: string }) => {
   const [draft, setDraft] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [messages, setMessages] = useState<StudioChatMessage[]>([]);
   const [turn, setTurn] = useState<StreamingTurn | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data: loadedMessages, isPending } = useListMessages(projectId);
   const sendMessage = useSendChatMessage();
   const interruptChat = useInterruptChat();
+  const refreshPreview = useWorkspaceStore(state => state.refreshPreview);
+  const uploadInputs = useUploadInputs(projectId);
   const sending = sendMessage.isPending;
 
   useEffect(() => {
@@ -59,10 +65,29 @@ export const ChatPanel = ({ projectId }: { projectId: string }) => {
     return () => window.clearInterval(intervalId);
   }, [sending]);
 
-  const submit = () => {
-    const message = draft.trim();
-    if (!message || sending || isPending) return;
+  const submit = async () => {
+    const text = draft.trim();
+    if (
+      (!text && pendingFiles.length === 0) ||
+      sending ||
+      isPending ||
+      uploadInputs.isPending
+    ) {
+      return;
+    }
 
+    let note = "";
+    if (pendingFiles.length > 0) {
+      try {
+        const uploaded = await uploadInputs.mutateAsync(pendingFiles);
+        note = `(Uploaded to inputs/: ${uploaded.files.map(f => f.name).join(", ")})`;
+      } catch {
+        return; // upload failed; the global toast already surfaced it
+      }
+      setPendingFiles([]);
+    }
+
+    const message = [text, note].filter(Boolean).join("\n\n");
     setDraft("");
     setTurn({ userText: message, assistantText: "", steps: [], status: "running" });
 
@@ -117,8 +142,9 @@ export const ChatPanel = ({ projectId }: { projectId: string }) => {
         },
         onError: () => {
           setTurn(null);
-          setDraft(message);
+          setDraft(text);
         },
+        onSettled: () => refreshPreview(),
       },
     );
   };
@@ -153,6 +179,28 @@ export const ChatPanel = ({ projectId }: { projectId: string }) => {
 
       <div className="mx-auto w-full max-w-2xl px-4 pb-4">
         <div className="rounded-lg border border-input bg-background p-3">
+          {pendingFiles.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 pb-2">
+              {pendingFiles.map((file, index) => (
+                <span
+                  key={`${file.name}-${index}`}
+                  className="flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs"
+                >
+                  <span className="max-w-40 truncate">{file.name}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${file.name}`}
+                    onClick={() =>
+                      setPendingFiles(files => files.filter((_, i) => i !== index))
+                    }
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : null}
+
           <Textarea
             value={draft}
             placeholder="Message the agent…"
@@ -161,12 +209,37 @@ export const ChatPanel = ({ projectId }: { projectId: string }) => {
             onKeyDown={event => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
-                submit();
+                void submit();
               }
             }}
             className="max-h-40 min-h-8 resize-none border-0 p-0 shadow-none focus-visible:ring-0"
           />
-          <div className="flex justify-end pt-1">
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,video/*,audio/*"
+            className="hidden"
+            onChange={event => {
+              const files = Array.from(event.target.files ?? []);
+              setPendingFiles(current => [...current, ...files]);
+              event.target.value = "";
+            }}
+          />
+
+          <div className="flex items-center justify-between pt-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              aria-label="Attach files"
+              disabled={isPending || sending || uploadInputs.isPending}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip className="size-4" />
+            </Button>
+
             {sending ? (
               <Button
                 variant="outline"
@@ -183,10 +256,18 @@ export const ChatPanel = ({ projectId }: { projectId: string }) => {
                 size="icon"
                 className="size-8"
                 aria-label="Send"
-                disabled={!draft.trim() || isPending}
-                onClick={submit}
+                disabled={
+                  (!draft.trim() && pendingFiles.length === 0) ||
+                  isPending ||
+                  uploadInputs.isPending
+                }
+                onClick={() => void submit()}
               >
-                <ArrowUp className="size-4" />
+                {uploadInputs.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <ArrowUp className="size-4" />
+                )}
               </Button>
             )}
           </div>

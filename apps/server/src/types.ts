@@ -22,6 +22,20 @@ export type CreateStudioProjectResponse = StudioProject;
 
 export type GetStudioProjectResponse = StudioProject;
 
+export type GetStudioProjectPreviewResponse = {
+  url: string;
+};
+
+export type UploadedStudioInput = {
+  name: string;
+  path: string;
+  url: string;
+};
+
+export type UploadStudioInputsResponse = {
+  files: UploadedStudioInput[];
+};
+
 export type StudioChatRole = "user" | "assistant";
 
 export type StudioChatMessage = {

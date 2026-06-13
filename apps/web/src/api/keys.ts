@@ -5,4 +5,6 @@ export const projectKeys = {
     [...projectKeys.all, "detail", projectId] as const,
   messages: (projectId: string) =>
     [...projectKeys.all, "detail", projectId, "messages"] as const,
+  preview: (projectId: string) =>
+    [...projectKeys.all, "detail", projectId, "preview"] as const,
 };

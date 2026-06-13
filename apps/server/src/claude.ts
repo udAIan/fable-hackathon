@@ -9,6 +9,7 @@ export type RunClaudeChatOptions = {
   model: string;
   resumeSessionId: string | null;
   anthropicApiKey: string;
+  deepgramApiKey: string;
   onEvent: (event: StudioChatStreamEvent) => void;
   onHandle?: (handle: CommandHandle) => void;
 };
@@ -23,8 +24,15 @@ export type RunClaudeChatResult = {
 export const runClaudeChat = async (
   options: RunClaudeChatOptions,
 ): Promise<RunClaudeChatResult> => {
-  const { sandbox, prompt, model, resumeSessionId, anthropicApiKey, onEvent } =
-    options;
+  const {
+    sandbox,
+    prompt,
+    model,
+    resumeSessionId,
+    anthropicApiKey,
+    deepgramApiKey,
+    onEvent,
+  } = options;
 
   const promptPath = `/tmp/studio-prompt-${randomUUID()}.txt`;
   await sandbox.files.write(promptPath, prompt);
@@ -39,6 +47,7 @@ export const runClaudeChat = async (
 
   const parser = createClaudeStreamParser(onEvent);
   let stdoutBuffer = "";
+  let stderrBuffer = "";
 
   const consume = (chunk: string) => {
     stdoutBuffer += chunk;
@@ -54,9 +63,15 @@ export const runClaudeChat = async (
   try {
     const handle = await sandbox.commands.run(command, {
       background: true,
-      envs: { ANTHROPIC_API_KEY: anthropicApiKey },
+      envs: {
+        ANTHROPIC_API_KEY: anthropicApiKey,
+        DEEPGRAM_API_KEY: deepgramApiKey,
+      },
       timeoutMs: STUDIO_COMMAND_TIMEOUT_MS,
       onStdout: consume,
+      onStderr: chunk => {
+        stderrBuffer += chunk;
+      },
     });
     options.onHandle?.(handle);
 
@@ -64,6 +79,26 @@ export const runClaudeChat = async (
 
     const finalLine = stdoutBuffer.trim();
     if (finalLine) parser.handleLine(finalLine);
+  } catch (error) {
+    // The in-sandbox `claude` command died (crash, OOM/SIGKILL, or the 30-min
+    // command cap). A bare SIGKILL (OOM) leaves no stderr, so also surface the
+    // last stdout (what the agent was doing) and check the kernel log for an OOM
+    // kill — that's usually the real cause.
+    const oomLog = await sandbox.commands
+      .run(
+        "dmesg 2>/dev/null | grep -iE 'out of memory|killed process|oom-kill' | tail -5",
+        { timeoutMs: 10 * 1000 },
+      )
+      .then(result => result.stdout.trim())
+      .catch(() => "");
+    // eslint-disable-next-line no-console
+    console.error(
+      "[claude] command failed\n" +
+        `  stderr: ${stderrBuffer.trim() || "(none)"}\n` +
+        `  stdout tail: ${stdoutBuffer.trim().slice(-1500) || "(none)"}\n` +
+        `  oom check: ${oomLog || "(no OOM lines found)"}`,
+    );
+    throw error;
   } finally {
     await sandbox.commands
       .run(`rm -f ${shellQuote(promptPath)}`, { timeoutMs: 15 * 1000 })

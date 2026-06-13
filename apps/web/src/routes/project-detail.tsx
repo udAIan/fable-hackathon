@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Copy } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useGetProject } from "../api/projects";
 import { ChatPanel } from "./chat-panel";
+import { PreviewPane } from "./preview-pane";
 
 export const ProjectDetailPage = () => {
   const { projectId } = useParams({ from: "/projects/$projectId" });
@@ -45,13 +46,8 @@ export const ProjectDetailPage = () => {
           )}
         </div>
 
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-muted/20 p-6">
-          <div className="text-center text-sm">
-            <p className="font-medium text-foreground">Preview</p>
-            <p className="text-muted-foreground">
-              Coming soon — the right panel is a placeholder.
-            </p>
-          </div>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <PreviewPane projectId={projectId} />
         </div>
       </div>
     </div>

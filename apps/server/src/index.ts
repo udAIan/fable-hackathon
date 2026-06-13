@@ -6,12 +6,9 @@ import { projectsRouter } from "./routes/projects/index";
 
 const app = express();
 
-const corsOrigin =
-  env.WEB_ORIGIN === "*"
-    ? true
-    : env.WEB_ORIGIN.split(",").map(origin => origin.trim());
-
-app.use(cors({ origin: corsOrigin }));
+// Hackathon: allow any origin. The agent-built preview lives on dynamic
+// *.e2b.app hosts and calls back here, so we don't gate CORS.
+app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
 app.get("/health", (_req, res) => {
