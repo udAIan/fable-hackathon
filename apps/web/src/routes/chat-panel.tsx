@@ -11,6 +11,7 @@ import {
   useListMessages,
   useSendChatMessage,
 } from "../api/chat";
+import { useWorkspaceStore } from "../store/workspace";
 
 type ChatStep = {
   id: string;
@@ -36,6 +37,7 @@ export const ChatPanel = ({ projectId }: { projectId: string }) => {
   const { data: loadedMessages, isPending } = useListMessages(projectId);
   const sendMessage = useSendChatMessage();
   const interruptChat = useInterruptChat();
+  const refreshPreview = useWorkspaceStore(state => state.refreshPreview);
   const sending = sendMessage.isPending;
 
   useEffect(() => {
@@ -119,6 +121,7 @@ export const ChatPanel = ({ projectId }: { projectId: string }) => {
           setTurn(null);
           setDraft(message);
         },
+        onSettled: () => refreshPreview(),
       },
     );
   };
