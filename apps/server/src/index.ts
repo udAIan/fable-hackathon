@@ -20,9 +20,9 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/projects", projectsRouter);
 
-const errorMiddleware: ErrorRequestHandler = (error, _req, res, _next) => {
+const errorMiddleware: ErrorRequestHandler = (error, req, res, _next) => {
   // eslint-disable-next-line no-console
-  console.error(error);
+  console.error(`[error] ${req.method} ${req.originalUrl}`, error);
   if (res.headersSent) return;
   res.status(500).json({
     error: "Internal Server Error",

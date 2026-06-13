@@ -32,6 +32,9 @@ export const useSendChatMessage = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // Shows its own error toasts below (raw fetch + stream events), so opt out
+    // of the global API error toast to avoid double toasts.
+    meta: { skipGlobalErrorToast: true },
     mutationFn: async ({ projectId, message, onEvent }: SendChatPayload) => {
       const response = await fetch(
         `${apiBaseUrl}/api/projects/${projectId}/chat`,
