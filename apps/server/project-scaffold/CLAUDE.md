@@ -37,6 +37,25 @@ database — the filesystem is your state. Organize it however the work needs.
   at it, propose which speaker is the on-screen subject, and confirm with the user.
 - **Generation tools (e.g. lip-sync) are user-triggered** — never invoke them on your own.
 
+## Lip-sync (paid generation — runs on the Studio server)
+
+You never call the lip-sync API or hold its key. You build the UI; the **user clicks**; the
+Studio server runs the job and delivers the corrected clips back into `media/`. Reach the Studio
+server from your app via the injected env `import.meta.env.VITE_STUDIO_API_URL` and
+`import.meta.env.VITE_STUDIO_PROJECT_ID`.
+
+1. **Cut first.** For each on-screen-speaker segment, write the clip + its audio to
+   `media/segments/<id>.mp4` and `media/segments/<id>.wav`.
+2. **Start on the user's click** (never on your own):
+   `POST {VITE_STUDIO_API_URL}/api/projects/{VITE_STUDIO_PROJECT_ID}/lipsync`
+   body `{ "segments": [{ "id": "seg-0", "video": "media/segments/seg-0.mp4", "audio": "media/segments/seg-0.wav" }, …] }`.
+   Returns request ids (also written to `media/lipsync.json`).
+3. **Show progress by polling** every few seconds:
+   `GET {VITE_STUDIO_API_URL}/api/projects/{VITE_STUDIO_PROJECT_ID}/lipsync`.
+   As each job finishes, the corrected clip is delivered to `media/lipsynced/<id>.mp4`.
+4. **When all segments are completed,** stitch the corrected clips back over the originals
+   (ffmpeg concat) into the final video and show it in the preview.
+
 ## State
 
 - Keep `STATE.md` current: what this project is, what you've made, what's pending.

@@ -19,3 +19,6 @@ export const STUDIO_PREVIEW_PORT = 5175;
 
 // User-uploaded source files land here (read-only source for the agent).
 export const STUDIO_INPUTS_DIR = "/home/user/inputs";
+
+// Agent-generated / served media (lip-sync outputs, job state, etc.) land here.
+export const STUDIO_MEDIA_DIR = "/home/user/media";

@@ -30,7 +30,7 @@ export const getStudioProjectPreview = async (
   });
   await sandbox.setTimeout(STUDIO_SANDBOX_TIMEOUT_MS);
 
-  await ensureDevServer(sandbox);
+  await ensureDevServer(sandbox, req.params.projectId);
 
   return res.json({ url: `https://${sandbox.getHost(STUDIO_PREVIEW_PORT)}` });
 };
@@ -38,12 +38,21 @@ export const getStudioProjectPreview = async (
 // Starts the Vite dev server in the app dir unless it's already listening.
 // Idempotent: safe to call on every preview load, and restarts the server if a
 // pause/resume lost it.
-const ensureDevServer = async (sandbox: Sandbox) => {
+const ensureDevServer = async (sandbox: Sandbox, projectId: string) => {
   if (await isPortUp(sandbox)) return;
 
+  // Inject identity so the agent-built preview can call back to our server
+  // (e.g. to start a lip-sync job). Vite exposes these as import.meta.env.
   await sandbox.commands.run(
     `cd ${STUDIO_APP_DIR} && pnpm dev > /tmp/vite.log 2>&1`,
-    { background: true, timeoutMs: STUDIO_SANDBOX_TIMEOUT_MS },
+    {
+      background: true,
+      timeoutMs: STUDIO_SANDBOX_TIMEOUT_MS,
+      envs: {
+        STUDIO_PROJECT_ID: projectId,
+        STUDIO_API_URL: env.STUDIO_PUBLIC_URL,
+      },
+    },
   );
 
   // Give Vite a few seconds to boot; return best-effort if it's slow — the

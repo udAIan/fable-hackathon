@@ -80,6 +80,30 @@ interactive → web state is coherent.
 
 **Status:** confirmed working — UI built via chat rendered live in the iframe.
 
+## Demo pipeline — video lip-sync fix ✅ (built)
+
+Use case: a clip with AI-generated audio whose **on-screen** speaker's lips don't match (an
+off-screen interviewer also talks). Fix the lip-sync for only the on-screen speaker's segments.
+
+Flow (agent orchestrates; only lip-sync is paid + user-fired):
+1. **Upload** the clip via the chat box → `/home/user/inputs/`.
+2. **Analyze (local/cheap):** agent extracts audio (ffmpeg), runs **Deepgram diarization**
+   (`DEEPGRAM_API_KEY` lives in the sandbox), IDs the on-screen speaker (frame check → user
+   confirms), cuts her segments to `media/segments/<id>.{mp4,wav}`.
+3. **Lip-sync (paid, server-side, user-fired):** agent builds a button in the preview → user
+   clicks → `POST /api/projects/:id/lipsync` → server submits one `fal-ai/sync-lipsync/v2` job per
+   segment (`FAL_KEY` server-side), writes request ids to `media/lipsync.json`. The preview
+   **polls `GET …/lipsync`**; the server delivers each corrected clip to
+   `media/lipsynced/<id>.mp4` on completion.
+4. **Stitch (local/cheap):** agent concats the corrected clips back over the originals → final
+   video in the preview.
+
+Key decisions: **N short jobs** (one per segment), **fal queue + poll** (never block),
+**request ids live in the sandbox** (`media/lipsync.json`, not a DB), the **sandbox polls** our
+server (server proxies fal). Cheap analysis key (Deepgram) sits *in* the sandbox; only the
+expensive gen key (fal) is server-side + user-triggered. Preview→server identity via injected
+`VITE_STUDIO_PROJECT_ID` / `VITE_STUDIO_API_URL` + `*.e2b.app` CORS.
+
 ## Known issues / in flight
 
 - An agent turn died with `SandboxError: 2: [unknown] terminated` — the in-sandbox `claude`
