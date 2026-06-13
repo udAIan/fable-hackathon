@@ -6,24 +6,9 @@ import { projectsRouter } from "./routes/projects/index";
 
 const app = express();
 
-const allowedOrigins =
-  env.WEB_ORIGIN === "*"
-    ? null
-    : env.WEB_ORIGIN.split(",").map(origin => origin.trim());
-
-app.use(
-  cors({
-    // Allow the configured web origin(s), plus any sandbox preview host
-    // (*.e2b.app) so the agent-built preview can call back to start jobs.
-    origin: (origin, callback) => {
-      if (!origin || origin.endsWith(".e2b.app")) return callback(null, true);
-      if (!allowedOrigins || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(null, false);
-    },
-  }),
-);
+// Hackathon: allow any origin. The agent-built preview lives on dynamic
+// *.e2b.app hosts and calls back here, so we don't gate CORS.
+app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
 app.get("/health", (_req, res) => {

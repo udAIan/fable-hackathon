@@ -124,11 +124,10 @@ expensive gen key (fal) is server-side + user-triggered. Preview→server identi
 | Preview pane / chat / layout | `apps/web/src/routes/{preview-pane,chat-panel,project-detail}.tsx` |
 | Shared UI state | `apps/web/src/store/workspace.ts` |
 
-## Next (deferred)
+## Next
 
-- **Tool/gen mechanics:** button (in the sandbox preview) → our server → run gen → deliver media
-  into the sandbox. Resolve the trigger path + identity, and async jobs (video gen is slow) with
-  loading states.
-- **Skills:** video-production workflows + UX principles that make the agent useful.
+- **Skills:** broaden video-production + UX skilling beyond the lip-sync demo.
 - **Refinement:** only reload the preview when `app/` files actually changed (currently every
   turn — a harmless flash on text-only replies).
+- **Prod durability (if deployed):** fal **webhooks** instead of sandbox polling; resume in-flight
+  jobs from `media/lipsync.json` on restart.
