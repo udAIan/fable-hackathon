@@ -9,6 +9,8 @@ export type {
   CreateStudioProjectResponse,
   GetStudioProjectResponse,
   GetStudioProjectPreviewResponse,
+  UploadedStudioInput,
+  UploadStudioInputsResponse,
   StudioChatRole,
   StudioChatMessage,
   ListStudioChatMessagesResponse,

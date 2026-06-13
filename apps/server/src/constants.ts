@@ -16,3 +16,6 @@ export const STUDIO_APP_DIR = "/home/user/app";
 
 // Port the preview dev server (and its E2B public host) runs on.
 export const STUDIO_PREVIEW_PORT = 5175;
+
+// User-uploaded source files land here (read-only source for the agent).
+export const STUDIO_INPUTS_DIR = "/home/user/inputs";
