@@ -80,13 +80,23 @@ export const runClaudeChat = async (
     const finalLine = stdoutBuffer.trim();
     if (finalLine) parser.handleLine(finalLine);
   } catch (error) {
-    // The in-sandbox `claude` command died (crash, OOM/SIGKILL, or timeout). Its
-    // stderr is the only clue, so surface it before the error propagates. A bare
-    // SIGKILL (e.g. OOM) often leaves stderr empty — that absence is itself a hint.
-    const stderr = stderrBuffer.trim();
+    // The in-sandbox `claude` command died (crash, OOM/SIGKILL, or the 30-min
+    // command cap). A bare SIGKILL (OOM) leaves no stderr, so also surface the
+    // last stdout (what the agent was doing) and check the kernel log for an OOM
+    // kill — that's usually the real cause.
+    const oomLog = await sandbox.commands
+      .run(
+        "dmesg 2>/dev/null | grep -iE 'out of memory|killed process|oom-kill' | tail -5",
+        { timeoutMs: 10 * 1000 },
+      )
+      .then(result => result.stdout.trim())
+      .catch(() => "");
     // eslint-disable-next-line no-console
     console.error(
-      `[claude] command failed${stderr ? `\n${stderr.slice(-4000)}` : " (no stderr captured)"}`,
+      "[claude] command failed\n" +
+        `  stderr: ${stderrBuffer.trim() || "(none)"}\n` +
+        `  stdout tail: ${stdoutBuffer.trim().slice(-1500) || "(none)"}\n` +
+        `  oom check: ${oomLog || "(no OOM lines found)"}`,
     );
     throw error;
   } finally {
