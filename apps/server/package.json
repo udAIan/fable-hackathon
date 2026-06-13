@@ -1,0 +1,40 @@
+{
+  "name": "server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "./src/exported-types.ts",
+  "exports": {
+    ".": {
+      "types": "./src/exported-types.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "build:studio-template": "tsx scripts/build-studio-template.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "drizzle-orm": "^0.45.2",
+    "e2b": "^2.24.0",
+    "express": "^5.1.0",
+    "pg": "^8.16.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.1",
+    "@types/pg": "^8.15.4",
+    "drizzle-kit": "^0.31.1",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}

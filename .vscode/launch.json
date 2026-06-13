@@ -1,0 +1,38 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node-terminal",
+      "name": "apps/server",
+      "request": "launch",
+      "command": "pnpm run dev",
+      "cwd": "${workspaceFolder}/apps/server"
+    },
+    {
+      "type": "node-terminal",
+      "name": "apps/web",
+      "request": "launch",
+      "command": "pnpm run dev",
+      "cwd": "${workspaceFolder}/apps/web"
+    },
+    {
+      "type": "chrome",
+      "name": "apps/web - chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/web/src",
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/*"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "full/dev",
+      "configurations": ["apps/server", "apps/web"]
+    }
+  ]
+}

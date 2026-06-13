@@ -1,0 +1,22 @@
+node_modules
+dist
+build
+*.log
+.DS_Store
+
+# env
+.env
+.env.*
+!.env.example
+
+# build outputs
+apps/web/dist
+apps/server/dist
+
+# cloudflare
+.wrangler
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
