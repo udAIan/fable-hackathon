@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { Sandbox } from "e2b";
-import { db, studioProjects } from "../../db/client";
+import { db, studioProjects, studioProjectSessions } from "../../db/client";
 import { env } from "../../env";
 import { STUDIO_SANDBOX_TIMEOUT_MS, STUDIO_TEMPLATE } from "../../constants";
 import type {
@@ -39,12 +39,20 @@ export const createStudioProject = async (
   let shouldKillSandbox = true;
 
   try {
-    const [project] = await db
-      .insert(studioProjects)
-      .values({ projectName, e2bSandboxId: sandbox.sandboxId })
-      .returning();
+    const project = await db.transaction(async tx => {
+      const [created] = await tx
+        .insert(studioProjects)
+        .values({ projectName, e2bSandboxId: sandbox.sandboxId })
+        .returning();
 
-    if (!project) throw new Error("Failed to create studio project");
+      if (!created) throw new Error("Failed to create studio project");
+
+      await tx
+        .insert(studioProjectSessions)
+        .values({ projectId: created.projectId });
+
+      return created;
+    });
 
     shouldKillSandbox = false;
     return res.status(201).json(serializeProject(project));

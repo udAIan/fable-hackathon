@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { Sandbox, type CommandHandle } from "e2b";
-import { eq } from "drizzle-orm";
-import { db, studioProjectMessages, studioProjects } from "../../db/client";
+import { and, eq, isNull } from "drizzle-orm";
+import { db, studioProjectSessions } from "../../db/client";
 import { env } from "../../env";
 import { STUDIO_SANDBOX_TIMEOUT_MS } from "../../constants";
 import { runClaudeChat } from "../../claude";
@@ -11,6 +11,7 @@ import type {
   StudioChatRequest,
   StudioChatStreamEvent,
 } from "../../types";
+import { getActiveStudioProjectSession } from "./sessions";
 
 type ActiveChatCommand = {
   handle: CommandHandle | null;
@@ -37,22 +38,15 @@ export const studioProjectChat = async (
   }
 
   return runQueued(projectId, async () => {
-    const [project] = await db
-      .select({
-        e2bSandboxId: studioProjects.e2bSandboxId,
-        claudeSessionId: studioProjects.claudeSessionId,
-      })
-      .from(studioProjects)
-      .where(eq(studioProjects.projectId, projectId))
-      .limit(1);
+    const session = await getActiveStudioProjectSession(projectId);
 
-    if (!project) {
+    if (!session) {
       return res
         .status(404)
         .json({ error: "Not Found", message: "Studio project not found" });
     }
 
-    const sandbox = await Sandbox.connect(project.e2bSandboxId, {
+    const sandbox = await Sandbox.connect(session.e2bSandboxId, {
       apiKey: env.E2B_API_KEY,
       timeoutMs: STUDIO_SANDBOX_TIMEOUT_MS,
     });
@@ -88,7 +82,7 @@ export const studioProjectChat = async (
         sandbox,
         prompt: message,
         model: env.STUDIO_AGENT_MODEL,
-        resumeSessionId: project.claudeSessionId,
+        resumeSessionId: session.claudeSessionId,
         anthropicApiKey: env.ANTHROPIC_API_KEY,
         onEvent: write,
         onHandle: handle => {
@@ -107,13 +101,26 @@ export const studioProjectChat = async (
       }
 
       write({ type: "assistant", text: finalText });
-      await persistChatTurn(
-        projectId,
-        message,
-        finalText,
-        project.claudeSessionId,
-        sessionId,
-      );
+
+      // First run on this session — record Claude's session id so later turns
+      // resume it. The conversation itself lives in the sandbox transcript.
+      if (!session.claudeSessionId && sessionId) {
+        try {
+          await db
+            .update(studioProjectSessions)
+            .set({ claudeSessionId: sessionId })
+            .where(
+              and(
+                eq(studioProjectSessions.sessionId, session.sessionId),
+                isNull(studioProjectSessions.claudeSessionId),
+              ),
+            );
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error("failed to persist claude session id", error);
+        }
+      }
+
       return end();
     } catch (error) {
       if (active.interrupted) {
@@ -146,31 +153,6 @@ export const interruptStudioProjectChat = async (
   const interrupted = await active.handle.kill().catch(() => false);
 
   return res.json({ interrupted });
-};
-
-const persistChatTurn = async (
-  projectId: string,
-  userText: string,
-  assistantText: string,
-  existingSessionId: string | null,
-  newSessionId: string | null,
-) => {
-  try {
-    await db.insert(studioProjectMessages).values([
-      { projectId, role: "user", content: userText },
-      { projectId, role: "assistant", content: assistantText },
-    ]);
-
-    if (!existingSessionId && newSessionId) {
-      await db
-        .update(studioProjects)
-        .set({ claudeSessionId: newSessionId })
-        .where(eq(studioProjects.projectId, projectId));
-    }
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("failed to persist studio chat turn", error);
-  }
 };
 
 const runQueued = async <T>(projectId: string, task: () => Promise<T>) => {

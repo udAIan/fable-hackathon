@@ -176,32 +176,18 @@ const describeToolUse = (
     return undefined;
   };
 
-  switch (name) {
-    case "Bash":
-      return { label: "Running command", detail: truncate(field("command")) };
-    case "Read":
-      return { label: "Reading file", detail: field("file_path") };
-    case "Write":
-      return { label: "Writing file", detail: field("file_path") };
-    case "Edit":
-    case "MultiEdit":
-    case "NotebookEdit":
-      return { label: "Editing file", detail: field("file_path") };
-    case "Glob":
-      return { label: "Finding files", detail: field("pattern") };
-    case "Grep":
-      return { label: "Searching", detail: field("pattern") };
-    case "WebFetch":
-      return { label: "Fetching", detail: field("url") };
-    case "WebSearch":
-      return { label: "Searching the web", detail: field("query") };
-    case "Task":
-      return { label: "Running subagent", detail: field("description") };
-    case "TodoWrite":
-      return { label: "Planning" };
-    default:
-      return { label: name ? `Using ${name}` : "Working" };
+  if (name === "Bash") {
+    return { label: "Running command", detail: truncate(field("command")) };
   }
+
+  const detail = truncate(
+    field("file_path") ?? field("pattern") ?? field("query") ?? field("url"),
+  );
+
+  return {
+    label: name ? `Using ${name}` : "Working",
+    ...(detail ? { detail } : {}),
+  };
 };
 
 const truncate = (value: string | undefined, max = 200) => {

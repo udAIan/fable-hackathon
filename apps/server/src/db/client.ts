@@ -9,4 +9,4 @@ const pool = new Pool({
 
 export const db = drizzle({ client: pool, schema });
 
-export { studioProjects, studioProjectMessages } from "./schema";
+export { studioProjects, studioProjectSessions } from "./schema";
