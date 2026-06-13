@@ -9,6 +9,7 @@ export type RunClaudeChatOptions = {
   model: string;
   resumeSessionId: string | null;
   anthropicApiKey: string;
+  deepgramApiKey: string;
   onEvent: (event: StudioChatStreamEvent) => void;
   onHandle?: (handle: CommandHandle) => void;
 };
@@ -23,8 +24,15 @@ export type RunClaudeChatResult = {
 export const runClaudeChat = async (
   options: RunClaudeChatOptions,
 ): Promise<RunClaudeChatResult> => {
-  const { sandbox, prompt, model, resumeSessionId, anthropicApiKey, onEvent } =
-    options;
+  const {
+    sandbox,
+    prompt,
+    model,
+    resumeSessionId,
+    anthropicApiKey,
+    deepgramApiKey,
+    onEvent,
+  } = options;
 
   const promptPath = `/tmp/studio-prompt-${randomUUID()}.txt`;
   await sandbox.files.write(promptPath, prompt);
@@ -55,7 +63,10 @@ export const runClaudeChat = async (
   try {
     const handle = await sandbox.commands.run(command, {
       background: true,
-      envs: { ANTHROPIC_API_KEY: anthropicApiKey },
+      envs: {
+        ANTHROPIC_API_KEY: anthropicApiKey,
+        DEEPGRAM_API_KEY: deepgramApiKey,
+      },
       timeoutMs: STUDIO_COMMAND_TIMEOUT_MS,
       onStdout: consume,
       onStderr: chunk => {

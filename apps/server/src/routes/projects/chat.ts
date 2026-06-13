@@ -84,6 +84,7 @@ export const studioProjectChat = async (
         model: env.STUDIO_AGENT_MODEL,
         resumeSessionId: session.claudeSessionId,
         anthropicApiKey: env.ANTHROPIC_API_KEY,
+        deepgramApiKey: env.DEEPGRAM_API_KEY,
         onEvent: write,
         onHandle: handle => {
           active.handle = handle;
