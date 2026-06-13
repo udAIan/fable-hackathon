@@ -19,3 +19,4 @@ apps/server/dist
 # editor
 .vscode/*
 !.vscode/extensions.json
+!.vscode/launch.json
