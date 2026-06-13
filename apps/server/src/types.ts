@@ -22,6 +22,10 @@ export type CreateStudioProjectResponse = StudioProject;
 
 export type GetStudioProjectResponse = StudioProject;
 
+export type GetStudioProjectPreviewResponse = {
+  url: string;
+};
+
 export type StudioChatRole = "user" | "assistant";
 
 export type StudioChatMessage = {
