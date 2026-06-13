@@ -39,6 +39,7 @@ export const runClaudeChat = async (
 
   const parser = createClaudeStreamParser(onEvent);
   let stdoutBuffer = "";
+  let stderrBuffer = "";
 
   const consume = (chunk: string) => {
     stdoutBuffer += chunk;
@@ -57,6 +58,9 @@ export const runClaudeChat = async (
       envs: { ANTHROPIC_API_KEY: anthropicApiKey },
       timeoutMs: STUDIO_COMMAND_TIMEOUT_MS,
       onStdout: consume,
+      onStderr: chunk => {
+        stderrBuffer += chunk;
+      },
     });
     options.onHandle?.(handle);
 
@@ -64,6 +68,16 @@ export const runClaudeChat = async (
 
     const finalLine = stdoutBuffer.trim();
     if (finalLine) parser.handleLine(finalLine);
+  } catch (error) {
+    // The in-sandbox `claude` command died (crash, OOM/SIGKILL, or timeout). Its
+    // stderr is the only clue, so surface it before the error propagates. A bare
+    // SIGKILL (e.g. OOM) often leaves stderr empty — that absence is itself a hint.
+    const stderr = stderrBuffer.trim();
+    // eslint-disable-next-line no-console
+    console.error(
+      `[claude] command failed${stderr ? `\n${stderr.slice(-4000)}` : " (no stderr captured)"}`,
+    );
+    throw error;
   } finally {
     await sandbox.commands
       .run(`rm -f ${shellQuote(promptPath)}`, { timeoutMs: 15 * 1000 })
